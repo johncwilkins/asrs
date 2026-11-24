@@ -1,34 +1,11 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Interactive rack-to-rack transfer demonstration"><title>AS/RS Transfer Simulator</title><link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AS/RS Simulator</title>
+  <meta http-equiv="refresh" content="0; url=storage.html">
+</head>
 <body>
-<header class="mast"><div class="brand"><span class="mark" aria-hidden="true">▤</span><span>AS/RS <strong>TRANSFER LAB</strong></span></div><nav class="page-tabs" aria-label="Simulation"><a href="./" aria-current="page">Transfer</a><a href="storage.html">Storage</a><a href="retrieve.html">Retrieve</a></nav><span class="mode"><i></i> Simulation</span><button id="reset" class="subtle">Reset demo</button></header>
-<main>
-<div class="intro"><div><h1>Rack-to-rack transfer</h1><p>Submit a rack-to-rack transfer and follow the command, carriage feedback, and inventory update.</p></div><div class="line"><span>Storage line</span><strong>Line 2</strong></div></div>
-<section class="ignition-boundary" aria-labelledby="ignition-title">
-<div class="boundary-heading"><span class="glyph">ϟ</span><h2 id="ignition-title">Ignition</h2><label class="demo-user">Demo username<input id="demo-username" value="demo.operator" maxlength="48" autocomplete="username"></label></div>
-<div class="ignition-grid">
-<section class="panel operator"><header><span class="glyph">↳</span><h3>Operator interface</h3><span id="operator-status" class="badge">Ready</span></header>
-<form id="request">
-<div class="row">
-<label>Find by<select id="lookup"><option value="id">Pallet ID</option><option value="slot">Rack location</option></select></label>
-<div class="source-control"><label id="source-label" for="source">Pallet ID</label><div class="picker"><input id="source" value="123" required maxlength="20" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="pallet-list"><button id="show-pallets" type="button" aria-label="Show all pallets" tabindex="-1">⌄</button><ul id="pallet-list" role="listbox" aria-label="Stored pallets" hidden></ul><datalist id="rack-ids"></datalist></div></div>
-</div>
-<label class="mode-field">Destination mode<select id="mode"><option value="specified">Specified location</option><option value="auto">Most Convenient</option></select></label>
-<div class="address-fields"><label>Bin<select id="bin"></select></label><label>Level<select id="level"></select></label><label>Side<select id="side"></select></label></div>
-<div class="operator-actions"><button class="primary" id="run">Start transfer</button><span id="form-message" aria-live="polite">Choose a pallet and an available destination.</span></div>
-</form></section>
-<section class="panel backend"><header><span class="glyph">⇄</span><h3>Backend interfaces</h3></header>
-<div class="connections">
-<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><a class="pending-db-link" id="pending-db-link" href="retrieve.html" hidden>Finish pending retrieval write</a><button class="next-action" id="step-lookup" type="button" data-system-step hidden>Read inventory</button><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Update inventory</button></div>
-<div class="interface"><h4>Carriage PLC</h4><dl><div><dt>Command sent</dt><dd id="plc-command">—</dd></div><div><dt>Feedback received</dt><dd id="plc-feedback" aria-live="polite">Parked</dd></div></dl><button class="next-action" id="step-carriage" type="button" data-system-step hidden>Send carriage command</button></div>
-</div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div><div class="trace-controls"><p id="trace-message" aria-live="polite" hidden></p><button id="step-feedback" class="next-action" type="button" data-system-step hidden>Continue after feedback</button></div></section>
-</div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><label><input id="trace-demo" type="checkbox"> Pause on every command and feedback</label></div></section>
-<div class="dashboard equipment">
-<section class="panel inventory"><header><span class="glyph">▤</span><h2>Database</h2><span class="minor">Saved in this browser</span><button type="button" class="subtle" id="move-report-open">Move report</button></header>
-<div class="inventory-inner"><div class="records"><table><caption>Current inventory</caption><thead><tr><th>Pallet</th><th>Rack address</th><th>Status</th><th>Stored at</th><th>Stored by</th></tr></thead><tbody id="records"></tbody></table></div>
-<div class="records move-history"><table><caption>Move history</caption><thead><tr><th>Pallet</th><th>From</th><th>To</th><th>Requested by</th><th>Last event</th></tr></thead><tbody id="history"></tbody></table></div></div></section>
-<section class="panel carriage"><header><span class="glyph">▦</span><h2>Carriage PLC</h2><span id="carriage-state" class="badge">Parked</span></header>
-<div id="scene"><canvas id="rack" tabindex="0" aria-label="Interactive 3D rack aisle. Drag or use the arrow keys to orbit the carriage."></canvas><div class="viewport-label"><i></i> RACK AISLE <span>LINE 2</span></div><div class="view-controls"><button id="view" type="button">Aisle view</button></div></div>
-<div class="scene-foot"><span><i class="legend source"></i> Source</span><span><i class="legend destination"></i> Destination</span><span><i class="legend load"></i> Transfer pallet</span><span class="orbit-tip">Drag to orbit · +/− to zoom · B = bin · L = level</span></div></section>
-</div>
-</main></body></html>
+  <p><a href="storage.html">Open the Storage simulator</a></p>
+</body>
+</html>

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Interactive pallet retrieval demonstration"><title>AS/RS Retrieve Simulator</title><link rel="stylesheet" href="style.css"><script type="module" src="retrieve.js"></script></head>
 <body>
-<header class="mast"><div class="brand"><span class="mark" aria-hidden="true">▤</span><span>AS/RS <strong>RETRIEVE LAB</strong></span></div><nav class="page-tabs" aria-label="Simulation"><a href="./">Transfer</a><a href="storage.html">Storage</a><a href="retrieve.html" aria-current="page">Retrieve</a></nav><span class="mode"><i></i> Simulation</span><button id="reset-retrieve" class="subtle">Reset demo</button></header>
+<header class="mast"><div class="brand"><span class="mark" aria-hidden="true">▤</span><span>AS/RS <strong>RETRIEVE LAB</strong></span></div><nav class="page-tabs" aria-label="Simulation"><a href="transfer.html">Transfer</a><a href="storage.html">Storage</a><a href="retrieve.html" aria-current="page">Retrieve</a></nav><span class="mode"><i></i> Simulation</span><button id="reset-retrieve" class="subtle">Reset demo</button></header>
 <main>
 <div class="intro"><div><h1>Retrieve a pallet</h1><p>Follow the pallet from its rack location through the outfeed handoff, unloading, and inventory update.</p></div><div class="line"><span>Storage line</span><strong>Line 2</strong></div></div>
 <section class="ignition-boundary" aria-labelledby="ignition-title">
@@ -18,7 +18,7 @@
 <div class="interface"><h4>Conveyor PLC</h4><dl><div><dt>Command sent</dt><dd id="conveyor-command">—</dd></div><div><dt>Feedback received</dt><dd id="conveyor-feedback" aria-live="polite">Outfeed stand available</dd></div></dl><button class="next-action" id="step-conveyor" type="button" data-system-step hidden>Release outfeed</button></div>
 <div class="interface"><h4>Carriage PLC</h4><dl><div><dt>Command sent</dt><dd id="plc-command">—</dd></div><div><dt>Feedback received</dt><dd id="plc-feedback" aria-live="polite">Parked</dd></div></dl><button class="next-action" id="step-carriage" type="button" data-system-step hidden>Send carriage command</button></div>
 </div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div><div class="trace-controls"><p id="trace-message" aria-live="polite" hidden></p><button id="step-feedback" class="next-action" type="button" data-system-step hidden>Continue after feedback</button></div></section>
-</div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><label><input id="trace-demo" type="checkbox"> Pause on every command and feedback</label></div></section>
+</div><div class="system-steps"><label><input id="step-demo" type="checkbox"> System step-through</label><label><input id="trace-demo" type="checkbox"> Pause on every command and feedback</label></div></section>
 <div class="dashboard equipment storage-equipment retrieval-equipment">
 <section class="panel conveyor"><header><span class="glyph">▤</span><h2>Conveyor PLC</h2><span id="conveyor-state" class="badge">Ready</span></header>
 <div class="equipment-action"><button id="unload-pallet" type="button" disabled>Remove pallet at unload point</button><p id="unload-message" aria-live="polite">Waiting for a pallet at the unload point.</p></div>
