@@ -22,20 +22,20 @@ export async function runTransfer({palletId,from,to},{carriage,load,report,signa
   const source=from?'source rack':'conveyor pickup station';
   const emit=(status,detail,carrying=false)=>report({palletId,status,detail,carrying});
   signal.throwIfAborted();
-  emit('Moving to source','Command accepted. Traveling to the '+source+'.');
+  await emit('Moving to source','Command accepted. Traveling to the '+source+'.');
   await move(signal,carriage,{x:fx,y:fy},1100);
-  emit('At source','Carriage aligned with the '+source+'.');
-  emit('Picking pallet','Forks extending at the '+source+'.');
+  await emit('At source','Carriage aligned with the '+source+'.');
+  await emit('Picking pallet','Forks extending at the '+source+'.');
   await move(signal,carriage,{fork:fz},590);
   const pallet={x:fx,y:fy,z:fz};
   load(pallet);
   await Promise.all([move(signal,carriage,{fork:0},720),move(signal,pallet,{z:0},720)]);
-  emit('Pallet aboard','Pickup confirmed by the Carriage PLC.',true);
-  emit('Traveling with pallet','Moving to the '+destination+'.',true);
+  await emit('Pallet aboard','Pickup confirmed by the Carriage PLC.',true);
+  await emit('Traveling with pallet','Moving to the '+destination+'.',true);
   await Promise.all([move(signal,carriage,{x:tx,y:ty},1450),move(signal,pallet,{x:tx,y:ty},1450)]);
-  emit('At destination','Carriage aligned with the '+destination+'.',true);
-  emit('Placing pallet','Forks extending at the '+destination+'.',true);
+  await emit('At destination','Carriage aligned with the '+destination+'.',true);
+  await emit('Placing pallet','Forks extending at the '+destination+'.',true);
   await Promise.all([move(signal,carriage,{fork:tz},650),move(signal,pallet,{z:tz},650)]);
   await move(signal,carriage,{fork:0},540);
-  report(to?{palletId,status:'Placement confirmed',detail:'Placement confirmed by the Carriage PLC.',location:to}:{palletId,status:'Outfeed deposit confirmed',detail:'Pallet deposited at the outfeed stand and forks clear.',deposited:true});
+  await report(to?{palletId,status:'Placement confirmed',detail:'Placement confirmed by the Carriage PLC.',location:to}:{palletId,status:'Outfeed deposit confirmed',detail:'Pallet deposited at the outfeed stand and forks clear.',deposited:true});
 }

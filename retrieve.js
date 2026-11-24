@@ -96,7 +96,6 @@ function queueRetrieval(e){
   e.preventDefault();
   const entered=$(byId()?'retrieve-pallet':'retrieve-source').value;
   const item=state.inventory.find(item=>byId()?item.id===entered:address(item.slot)===entered);
-  flash('db','Look up stored pallet');
   if(!item||jobs.has(item.id)||pendingDepartures(database.history).some(entry=>entry.id===item.id)){
     text('form-message',item?'Pallet '+item.id+' is already being retrieved.':'Select a stored pallet.');
     return;
@@ -126,12 +125,15 @@ async function runRetrieval(item,entry,signal){
   const beltPallet=document.createElement('div');
   beltPallet.className='belt-pallet retrieval-load';beltPallet.textContent=item.id;
   $('conveyor-stage').append(beltPallet);
-  text('db-exchange','Confirmed '+item.id+' at '+entry.from+'.');
   text('operator-status','Pending');text('plc-command','—');text('conveyor-command','—');
   if(!unload)text('unload-message','Waiting for a pallet at the unload point.');
-  event('Rack location confirmed. Outfeed stand available.');
+  event('Retrieval queued. Outfeed stand available.');
   records();
   try{
+    await steps.lookup(signal);signal.throwIfAborted();
+    flash('db','Look up stored pallet');
+    text('db-exchange','Confirmed '+item.id+' at '+entry.from+'.');
+    await steps.observe('Database → Ignition · '+item.id+' confirmed at '+entry.from,signal);
     await steps.pause('step-carriage');signal.throwIfAborted();
     queued.shift();delete entry.retrievalQueued;
     entry.from=address(item.slot);
@@ -146,12 +148,14 @@ async function runRetrieval(item,entry,signal){
         if(feedback.carrying)text('operator-status','In process on carriage');
         if(feedback.status==='Pallet aboard'){flash('carriage','Pickup confirmed',true);log(entry,'On carriage');}
         if(feedback.deposited){flash('carriage','Deposit confirmed',true);log(entry,'Deposited at outfeed');}
+        return steps.observe('Carriage PLC → Ignition · '+feedback.detail,signal);
       },
     });
     await wait(630,signal);
     beltPallet.dataset.position='pickup';
     cylinders(true);conveyor('Pallet present at deposit stand');flash('conveyor','Outfeed arrival',true);
     event('Ignition matched the outfeed arrival and carriage-clear feedback.');
+    await steps.observe('Conveyor PLC → Ignition · Pallet present at deposit stand',signal);
     if(unload){
       conveyor('Pallet waiting at stand');
       log(entry,'Waiting for unload point to clear');
@@ -165,13 +169,16 @@ async function runRetrieval(item,entry,signal){
     await wait(700,signal);cylinders(false);
     job.motion=null;
     beltPallet.dataset.position='scale';conveyor('Indexing to staging');log(entry,'On outfeed conveyor');
+    await steps.observe('Conveyor PLC → Ignition · Indexing to staging',signal);
     await wait(900,signal);
     beltPallet.dataset.position='unload';conveyor('Indexing to unload point');
+    await steps.observe('Conveyor PLC → Ignition · Indexing to unload point',signal);
     await wait(900,signal);
     conveyor('Ready to unload');flash('conveyor','Ready to unload',true);
     event('Pallet reached the unload point.');
     text('unload-message','Remove pallet '+item.id+' to confirm departure.');
     log(entry,'Ready to unload');
+    await steps.observe('Conveyor PLC → Ignition · Ready to unload '+item.id,signal);
     const removal=waitUnload();
     requestBusy=false;refreshControls();pump();
     await removal;signal.throwIfAborted();
@@ -180,6 +187,7 @@ async function runRetrieval(item,entry,signal){
     text('unload-message','Pallet '+item.id+' removed from the unload point.');
     entry.departurePending=true;
     log(entry,'Unloaded · database write pending');
+    await steps.observe('Conveyor PLC → Ignition · Departure confirmed for '+item.id,signal);
     await finishDeparture(entry,signal);
     if(state.job===job)state.job=null;
   }catch(error){
@@ -206,6 +214,7 @@ async function finishDeparture(entry,signal){
   text('db-exchange','Write committed: '+entry.from+' is free.');
   event('Pallet removed from active inventory and retrieval recorded.');
   flash('db','Save confirmed departure');log(entry,'Completed',true);receipt(entry);
+  await steps.observe('Database → Ignition · Departure write committed for '+id,signal);
 }
 $('retrieve-request').addEventListener('submit',queueRetrieval);
 $('retrieve-by').addEventListener('change',()=>{syncLookup();records();});

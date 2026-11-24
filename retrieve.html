@@ -14,11 +14,11 @@
 </form><div class="retrieval-queue"><h4>Retrieval queue</h4><ol id="retrieve-queue"></ol><p id="empty-retrieve-queue">No queued retrievals.</p></div></section>
 <section class="panel backend"><header><span class="glyph">⇄</span><h3>Backend interfaces</h3></header>
 <div class="connections">
-<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Write retrieval to database</button></div>
+<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><button class="next-action" id="step-lookup" type="button" data-system-step hidden>Read inventory</button><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Write retrieval to database</button></div>
 <div class="interface"><h4>Conveyor PLC</h4><dl><div><dt>Command sent</dt><dd id="conveyor-command">—</dd></div><div><dt>Feedback received</dt><dd id="conveyor-feedback" aria-live="polite">Outfeed stand available</dd></div></dl><button class="next-action" id="step-conveyor" type="button" data-system-step hidden>Release outfeed</button></div>
 <div class="interface"><h4>Carriage PLC</h4><dl><div><dt>Command sent</dt><dd id="plc-command">—</dd></div><div><dt>Feedback received</dt><dd id="plc-feedback" aria-live="polite">Parked</dd></div></dl><button class="next-action" id="step-carriage" type="button" data-system-step hidden>Send carriage command</button></div>
-</div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div></section>
-</div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><span>Pause at system handoffs</span></div></section>
+</div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div><div class="trace-controls"><p id="trace-message" aria-live="polite" hidden></p><button id="step-feedback" class="next-action" type="button" data-system-step hidden>Continue after feedback</button></div></section>
+</div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><label><input id="trace-demo" type="checkbox"> Pause on every command and feedback</label></div></section>
 <div class="dashboard equipment storage-equipment retrieval-equipment">
 <section class="panel conveyor"><header><span class="glyph">▤</span><h2>Conveyor PLC</h2><span id="conveyor-state" class="badge">Ready</span></header>
 <div class="equipment-action"><button id="unload-pallet" type="button" disabled>Remove pallet at unload point</button><p id="unload-message" aria-live="polite">Waiting for a pallet at the unload point.</p></div>
