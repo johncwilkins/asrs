@@ -1,7 +1,7 @@
 import {warehouse, sameSlot, address} from './scene.js';
 import {runTransfer} from './carriage.js';
 import {arrow,clearArrow,wait} from './links.js';
-import {readDatabase,writeDatabase,seedInventory,markInterrupted,demoUsername,storedDetails} from './database.js';
+import {readDatabase,writeDatabase,seedInventory,markInterrupted,pendingDepartures,demoUsername,storedDetails} from './database.js';
 import {systemSteps} from './steps.js';
 
 const $ = id => document.getElementById(id);
@@ -39,9 +39,11 @@ function cells(values){
   return row;
 }
 function records(){
+  state.offRack=new Set(pendingDepartures(state.history).map(entry=>entry.id));
+  $('pending-db-link').hidden=!state.offRack.size;
   $('records').replaceChildren(...state.inventory.map(item=>{
     const selected=state.job?.id===item.id;
-    const status=selected&&state.job.motion?'In transit':selected&&active()?'Allocated':'Stored';
+    const status=state.offRack.has(item.id)?'Unloaded · write pending':selected&&state.job.motion?'In transit':selected&&active()?'Allocated':'Stored';
     const row=cells([item.id,address(item.slot),status,...storedDetails(item)]);
     if(selected)row.className='focus';
     return row;
@@ -87,7 +89,7 @@ function selectPallet(id){
 }
 function showPicker(filter=''){
   if(!byId()||active())return;
-  const found=state.inventory.filter(item=>item.id.startsWith(filter.trim().toUpperCase())).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
+  const found=state.inventory.filter(item=>!state.offRack.has(item.id)&&item.id.startsWith(filter.trim().toUpperCase())).sort((a,b)=>a.id.localeCompare(b.id,undefined,{numeric:true}));
   picker.replaceChildren(...found.map((item,i)=>{
     const option=document.createElement('li'), location=document.createElement('span');
     option.id='pallet-option-'+i;option.dataset.id=item.id;option.setAttribute('role','option');option.setAttribute('aria-selected','false');
@@ -178,6 +180,7 @@ async function start(){
   let target;
   try{
     if(!item)throw new Error('No stored pallet matches that source.');
+    if(state.offRack.has(item.id))throw new Error('Pallet '+item.id+' was unloaded. Finish the pending retrieval write first.');
     target=choose(item);
     if(!target)throw new Error('There are no eligible empty rack slots.');
   }catch(error){

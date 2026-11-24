@@ -1,7 +1,7 @@
 import {warehouse,address,sameSlot} from './scene.js';
 import {runTransfer} from './carriage.js';
 import {arrow,clearArrow,wait} from './links.js';
-import {readDatabase,writeDatabase,markInterrupted,seedInventory,demoUsername,storedDetails} from './database.js';
+import {readDatabase,writeDatabase,markInterrupted,seedInventory,pendingDepartures,demoUsername,storedDetails} from './database.js';
 import {systemSteps} from './steps.js';
 
 const $=id=>document.getElementById(id);
@@ -31,11 +31,13 @@ function recordRows(id,rows,empty,columns=4){
   if(!rows.length){const tr=$(id).insertRow(),td=tr.insertCell();td.colSpan=columns;td.textContent=empty;}
 }
 function records(){
+  state.offRack=new Set(pendingDepartures(history).map(entry=>entry.id));
+  $('pending-db-link').hidden=!state.offRack.size;
   recordRows('queue',[...pending].map(([id,request])=>[
     id,request.mode==='specified'?request.address:'Most Efficient',request.requestedBy||'—',
     working&&state.job?.id===id?history[0].event:staged?.id===id?'Loaded at infeed':'Waiting for pallet',
   ]),'No queued storage orders.',4);
-  recordRows('records',state.inventory.map(item=>[item.id,address(item.slot),'Stored',...storedDetails(item)]),'No stored pallets.',5);
+  recordRows('records',state.inventory.map(item=>[item.id,address(item.slot),state.offRack.has(item.id)?'Unloaded · write pending':'Stored',...storedDetails(item)]),'No stored pallets.',5);
   recordRows('history',history.map(item=>[item.id,item.from,item.to,item.requestedBy||'—',item.event+' · '+new Date(item.at).toLocaleTimeString()]),'No moves recorded.',5);
 }
 function log(entry,label,finished=false){
@@ -62,6 +64,7 @@ function refresh(){
 function palletId(field){
   const id=$(field).value.trim().toUpperCase();
   if(!id)throw new Error('Enter the pallet ID shown on the barcode.');
+  if(state.offRack.has(id))throw new Error('Pallet '+id+' was unloaded. Finish the pending retrieval write first.');
   if(state.inventory.some(item=>item.id===id))throw new Error('Pallet '+id+' is already stored.');
   return id;
 }

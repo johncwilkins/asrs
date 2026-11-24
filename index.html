@@ -19,7 +19,7 @@
 </form></section>
 <section class="panel backend"><header><span class="glyph">⇄</span><h3>Backend interfaces</h3></header>
 <div class="connections">
-<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Update inventory</button></div>
+<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><a class="pending-db-link" id="pending-db-link" href="retrieve.html" hidden>Finish pending retrieval write</a><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Update inventory</button></div>
 <div class="interface"><h4>Carriage PLC</h4><dl><div><dt>Command sent</dt><dd id="plc-command">—</dd></div><div><dt>Feedback received</dt><dd id="plc-feedback" aria-live="polite">Parked</dd></div></dl><button class="next-action" id="step-carriage" type="button" data-system-step hidden>Send carriage command</button></div>
 </div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div></section>
 </div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><span>Pause at system handoffs</span></div></section>

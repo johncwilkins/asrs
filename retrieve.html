@@ -9,12 +9,12 @@
 <div class="ignition-grid">
 <section class="panel operator"><header><span class="glyph">↳</span><h3>Operator interface</h3><span id="operator-status" class="badge">Ready</span></header>
 <form id="retrieve-request" class="storage-form">
-<div class="row"><label>Find by<select id="retrieve-by"><option value="id">Pallet ID</option><option value="slot">Rack location</option></select></label><label><span id="retrieve-label">Pallet ID</span><input id="retrieve-source" value="123" maxlength="20" required autocomplete="off" list="retrieve-options"><datalist id="retrieve-options"></datalist></label></div>
-<div class="operator-actions"><button id="request-retrieve" class="primary">Request retrieval</button><span id="form-message" aria-live="polite">Select a stored pallet to retrieve.</span></div>
-</form></section>
+<div class="row"><label>Find by<select id="retrieve-by"><option value="id">Pallet ID</option><option value="slot">Rack location</option></select></label><label id="retrieve-pallet-field">Stored pallet ID<select id="retrieve-pallet" required></select></label><label id="retrieve-location-field" hidden>Source rack address<select id="retrieve-source" disabled></select></label></div>
+<div class="operator-actions"><button id="request-retrieve" class="primary">Request retrieval</button><span id="form-message" aria-live="polite">Select a pallet or rack location to queue a retrieval.</span></div>
+</form><div class="retrieval-queue"><h4>Retrieval queue</h4><ol id="retrieve-queue"></ol><p id="empty-retrieve-queue">No queued retrievals.</p></div></section>
 <section class="panel backend"><header><span class="glyph">⇄</span><h3>Backend interfaces</h3></header>
 <div class="connections">
-<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Update inventory</button></div>
+<div class="interface"><h4>Database</h4><p id="db-exchange" aria-live="polite">Ready to read rack inventory.</p><button class="next-action" id="step-inventory" type="button" data-system-step hidden>Write retrieval to database</button></div>
 <div class="interface"><h4>Conveyor PLC</h4><dl><div><dt>Command sent</dt><dd id="conveyor-command">—</dd></div><div><dt>Feedback received</dt><dd id="conveyor-feedback" aria-live="polite">Outfeed stand available</dd></div></dl><button class="next-action" id="step-conveyor" type="button" data-system-step hidden>Release outfeed</button></div>
 <div class="interface"><h4>Carriage PLC</h4><dl><div><dt>Command sent</dt><dd id="plc-command">—</dd></div><div><dt>Feedback received</dt><dd id="plc-feedback" aria-live="polite">Parked</dd></div></dl><button class="next-action" id="step-carriage" type="button" data-system-step hidden>Send carriage command</button></div>
 </div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div></section>
@@ -22,9 +22,9 @@
 <div class="dashboard equipment storage-equipment retrieval-equipment">
 <section class="panel conveyor"><header><span class="glyph">▤</span><h2>Conveyor PLC</h2><span id="conveyor-state" class="badge">Ready</span></header>
 <div class="equipment-action"><button id="unload-pallet" type="button" disabled>Remove pallet at unload point</button><p id="unload-message" aria-live="polite">Waiting for a pallet at the unload point.</p></div>
-<div id="conveyor-stage" class="conveyor-stage" role="img" aria-label="Outfeed deposit stand, staging conveyor, and unload point with transfer cylinders">
+<div id="conveyor-stage" class="conveyor-stage" role="img" aria-label="Outfeed runs right to left, from the carriage deposit stand through staging to the unload point">
 <div class="belt"></div><div class="belt-pallet" id="belt-pallet"></div><div class="cylinder top"></div><div class="cylinder bottom"></div>
-<div class="belt-zones"><span><b>11</b>Deposit stand</span><span><b>12</b>Staging</span><span><b>13</b>Unload point</span></div><span id="cylinder-note" class="cylinder-note">Transfer cylinders retracted</span></div></section>
+<div class="belt-zones"><span><b>13</b>Unload point</span><span><b>12</b>Staging</span><span><b>11</b>Deposit stand</span></div><span id="cylinder-note" class="cylinder-note">Transfer cylinders retracted</span></div></section>
 <section class="panel carriage"><header><span class="glyph">▦</span><h2>Carriage PLC</h2><span id="carriage-state" class="badge">Parked</span></header>
 <div id="scene"><canvas id="rack" tabindex="0" aria-label="Interactive 3D rack aisle. Drag or use the arrow keys to orbit the carriage."></canvas><div class="viewport-label"><i></i> RACK AISLE <span>LINE 2</span></div><div class="view-controls"><button id="view" type="button">Aisle view</button></div></div>
 <div class="scene-foot"><span><i class="legend source"></i> Source</span><span><i class="legend destination"></i> Destination</span><span><i class="legend load"></i> Transfer pallet</span><span class="orbit-tip">Drag to orbit · B = bin · L = level</span></div></section>

@@ -14,10 +14,16 @@ export function readDatabase(){
 export function writeDatabase(inventory,history,queue=readDatabase().queue){
   try{localStorage.setItem(key,JSON.stringify({inventory,history,queue}));}catch{}
 }
+export function pendingDepartures(history){
+  return history.filter(entry=>!entry.finished&&(entry.departurePending||entry.event==='Removed at unload point'));
+}
+
 export function markInterrupted(history){
+  const departures=new Set(pendingDepartures(history));
+
   let changed=false;
   for(const entry of history){
-    if(entry.finished)continue;
+    if(entry.finished||entry.retrievalQueued||departures.has(entry))continue;
     Object.assign(entry,{event:'Interrupted by reload',at:new Date().toISOString(),finished:true});
     changed=true;
   }
@@ -39,3 +45,5 @@ const dateFormat=new Intl.DateTimeFormat(undefined,{dateStyle:'short',timeStyle:
 export function storedDetails(item){
   return [item.storedAt?dateFormat.format(new Date(item.storedAt)):'—',item.storedBy||'—'];
 }
+
+addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
