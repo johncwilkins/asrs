@@ -206,7 +206,7 @@ async function start(){
   try{
     await steps.lookup(signal);signal.throwIfAborted();
     arrow('.backend .interface:first-child','.inventory','Check rack inventory');
-    await steps.observe('Database → Ignition · Source confirmed and destination reserved',signal);
+    await steps.observe('database','Source confirmed and destination reserved',signal);
     await steps.pause('step-carriage');
     signal.throwIfAborted();
     $('plc-command').textContent='Transfer '+item.id+' · '+entry.from+' → '+entry.to;
@@ -220,13 +220,12 @@ async function start(){
       carriage:state.carriage,signal,
       load:pallet=>{job.motion=pallet;},
       report:feedback=>{
-        if(feedback.location){placement=feedback.location;arrow('.carriage','.backend .interface:nth-child(2)','Placement confirmed',true);}
-        else if(feedback.status==='Pallet aboard')arrow('.carriage','.backend .interface:nth-child(2)','Pickup feedback',true);
+        if(feedback.location)placement=feedback.location;
         showFeedback(feedback.status);
         ignitionEvent(feedback.detail);
         if(feedback.carrying)badge('operator-status','In process');
         log(feedback.status);
-        return steps.observe('Carriage PLC → Ignition · '+feedback.detail,signal);
+        return steps.observe('carriage',feedback.detail,signal,feedback.status);
       },
     });
     $('db-exchange').textContent='Placement confirmed. Inventory update is pending.';
@@ -235,7 +234,7 @@ async function start(){
     signal.throwIfAborted();
     arrow('.backend .interface:first-child','.inventory','Save rack location');
     completeTransfer(job,placement);
-    await steps.observe('Database → Ignition · Inventory write committed for '+job.id,signal);
+    await steps.observe('database','Inventory write committed for '+job.id,signal);
     signal.throwIfAborted();
     state.running=false;configure();
   }catch(error){

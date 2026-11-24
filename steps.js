@@ -1,3 +1,11 @@
+import {arrow} from './links.js';
+
+const feedbackRoutes={
+  database:{from:'.inventory',to:'.backend .interface:has(#db-exchange)',name:'Database'},
+  conveyor:{from:'.conveyor',to:'.backend .interface:has(#conveyor-feedback)',name:'Conveyor PLC'},
+  carriage:{from:'.carriage',to:'.backend .interface:has(#plc-feedback)',name:'Carriage PLC'},
+};
+
 export function systemSteps(){
   const toggle=document.getElementById('step-demo');
   const trace=document.getElementById('trace-demo');
@@ -40,8 +48,13 @@ export function systemSteps(){
     lookup(signal){
       if(trace.checked)return pause(document.getElementById('step-lookup'),null,signal);
     },
-    observe(detail,signal){
-      if(trace.checked)return pause(traceButton,detail,signal);
+    async observe(source,detail,signal,label=detail){
+      signal?.throwIfAborted();
+      const route=feedbackRoutes[source];
+      const viewing=arrow(route.from,route.to,label,true);
+      const confirmation=trace.checked?pause(traceButton,route.name+' → Ignition · '+detail,signal):undefined;
+      await Promise.all([viewing,confirmation]);
+      signal?.throwIfAborted();
     },
   };
 }

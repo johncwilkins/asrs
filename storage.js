@@ -96,7 +96,7 @@ function cylinder(extended){
   $('conveyor-stage').dataset.cylinder=extended?'on':'off';
   text('cylinder-note',extended?'Transfer cylinders extended':'Transfer cylinders retracted');
 }
-const conveyorReport=(value,signal)=>steps.observe('Conveyor PLC → Ignition · '+value,signal);
+const conveyorReport=(value,signal)=>steps.observe('conveyor',value,signal);
 function clearAlarm(){
   $('storage-alarm').hidden=true;
   $('remove-rejected').hidden=true;
@@ -138,7 +138,6 @@ async function runConveyor(signal,entry,profile){
     text('operator-status','Alarm');
     text('scan-message','Remove the rejected pallet from the check station before retrying it.');
     conveyorFeedback('Held at check station · '+failedCheck);
-    flash('conveyor','Weight / dimension fault',true);
     event('Ignition received a failed conveyor check.');
     log(entry,'Rejected · '+failedCheck,true);
     await conveyorReport(alarm,signal);
@@ -147,7 +146,6 @@ async function runConveyor(signal,entry,profile){
     signal.throwIfAborted();
     $('belt-pallet').dataset.position='empty';
     conveyorFeedback('Rejected pallet removed');
-    flash('conveyor','Rejection cleared',true);
     await conveyorReport('Rejected pallet removed',signal);
     text('operator-status',entry.freeload?'Ready':'Pending');
     text('scan-message',entry.freeload?'Scan the corrected load with Freeload Mode on to retry.':'Storage order stays queued. Scan the corrected load to retry.');
@@ -184,7 +182,7 @@ $('storage-request').addEventListener('submit',async e=>{
     allocate(request);
     if(pending.has(id))throw new Error('A storage order for '+id+' is already queued.');
     text('db-exchange',id+' is eligible for storage.');
-    await steps.observe('Database → Ignition · '+id+' eligible for storage',signal);
+    await steps.observe('database',id+' eligible for storage',signal);
     pending.set(id,request);
     store();records();refresh();
     if(!working)text('operator-status','Pending');
@@ -194,7 +192,7 @@ $('storage-request').addEventListener('submit',async e=>{
     if(!signal.aborted){
       text('db-exchange',error.message);
       text('form-message',error.message);
-      await steps.observe('Inventory validation rejected · '+error.message);
+      await steps.observe('database','Inventory validation rejected · '+error.message);
     }
   }finally{
     if(orderValidation===local){orderValidation=null;refresh();}
@@ -221,7 +219,7 @@ function load(e){
     }
     text('scan-message',error.message+' Conveyor release blocked.');
     $('scan-message').classList.add('error');
-    event(error.message);flash('conveyor','Scan rejected',true);
+    event(error.message);
     void conveyorReport('Barcode rejected · '+error.message);
     return;
   }
@@ -254,7 +252,6 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
   text('operator-status','Loaded');
   conveyorFeedback('Barcode read: '+id);
   event(automatic?'Ignition received a Freeload scan.':'Ignition matched the infeed scan and reserved '+entry.to+'.');
-  flash('conveyor','Barcode '+id,true);
   log(entry,'Pallet scanned');
   try{
     await conveyorReport('Barcode read: '+id,signal);
@@ -264,7 +261,7 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
       text('form-message','Freeload · '+id+' · Infeed to '+entry.to);
       text('db-exchange','Freeload destination reserved: '+entry.to);
       event('Ignition selected '+entry.to+' for Freeload pallet '+id+'.');
-      await steps.observe('Database → Ignition · Pallet eligible; rack '+entry.to+' available',signal);
+      await steps.observe('database','Pallet eligible; rack '+entry.to+' available',signal);
     }
     await steps.pause('step-conveyor');signal.throwIfAborted();
     text('conveyor-command','Release '+id+' to pickup stand');
@@ -276,7 +273,6 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
     if(!await runConveyor(signal,entry,profile))return;
     state.infeed=true;
     event('Ignition received pickup-ready from the Conveyor PLC.');
-    flash('conveyor','Pickup ready',true);
     log(entry,'Waiting for carriage pickup');
     await conveyorReport('Pickup ready · '+id,signal);
     if(!$('step-demo').checked)await wait(720,signal);
@@ -297,11 +293,11 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
         text('plc-feedback',feedback.status);text('carriage-state',feedback.status);event(feedback.detail);
         if(feedback.carrying)text('operator-status','In process on carriage');
         if(feedback.status==='Pallet aboard'){
-          flash('carriage','Pickup confirmed',true);log(entry,'In process on carriage');
+          log(entry,'In process on carriage');
           await conveyorReport('Pickup stand clear',signal);
         }
-        if(feedback.location){placement=feedback.location;flash('carriage','Placement confirmed',true);log(entry,feedback.status);}
-        await steps.observe('Carriage PLC → Ignition · '+feedback.detail,signal);
+        if(feedback.location){placement=feedback.location;log(entry,feedback.status);}
+        await steps.observe('carriage',feedback.detail,signal,feedback.status);
       },
     });
     text('db-exchange','Placement confirmed. Inventory update pending.');
@@ -315,7 +311,7 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
     text('operator-status','Order completed');
     log(entry,'Completed',true);
     storageReport(entry);
-    await steps.observe('Database → Ignition · Inventory write committed for '+id,signal);
+    await steps.observe('database','Inventory write committed for '+id,signal);
   }catch(error){
     if(!signal.aborted){log(entry,'Interrupted',true);event('Storage interrupted. Reset the demo before retrying.');}
   }finally{
