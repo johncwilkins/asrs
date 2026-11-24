@@ -8,6 +8,7 @@
 <div class="boundary-heading"><span class="glyph">ϟ</span><h2 id="ignition-title">Ignition</h2><label class="demo-user">Demo username<input id="demo-username" value="demo.operator" maxlength="48" autocomplete="username"></label></div>
 <div class="ignition-grid">
 <section class="panel operator"><header><span class="glyph">↳</span><h3>Operator interface</h3><span id="operator-status" class="badge">Ready</span></header>
+<label class="freeload-mode"><input type="checkbox" id="freeload-mode"><span>Freeload Mode</span></label>
 <form id="storage-request" class="storage-form">
 <div class="row"><label>Pallet ID<input id="pallet-id" value="555" maxlength="20" required autocomplete="off"></label><label>Destination mode<select id="storage-mode"><option value="auto">Most Efficient</option><option value="specified">Specified location</option></select></label></div>
 <label class="mode-field">Destination<select id="storage-destination"></select></label>
@@ -30,8 +31,8 @@
 <section class="panel carriage"><header><span class="glyph">▦</span><h2>Carriage PLC</h2><span id="carriage-state" class="badge">Parked</span></header>
 <div id="scene"><canvas id="rack" tabindex="0" aria-label="Interactive 3D rack aisle. Drag or use the arrow keys to orbit the carriage."></canvas><div class="viewport-label"><i></i> RACK AISLE <span>LINE 2</span></div><div class="view-controls"><button id="view" type="button">Aisle view</button></div></div>
 <div class="scene-foot"><span><i class="legend source"></i> Source</span><span><i class="legend destination"></i> Destination</span><span><i class="legend load"></i> Transfer pallet</span><span class="orbit-tip">Drag to orbit · B = bin · L = level</span></div></section>
-<section class="panel inventory"><header><span class="glyph">▤</span><h2>Database</h2><span class="minor">Saved in this browser</span></header>
+<section class="panel inventory"><header><span class="glyph">▤</span><h2>Database</h2><span class="minor">Saved in this browser</span><button type="button" class="subtle" id="print-storage" hidden>Print storage report</button></header>
 <div class="inventory-inner"><div class="records queue-records"><table><caption>Queued storage orders</caption><thead><tr><th>Pallet</th><th>Destination</th><th>Requested by</th><th>Status</th></tr></thead><tbody id="queue"></tbody></table></div><div class="records"><table><caption>Current inventory</caption><thead><tr><th>Pallet</th><th>Rack address</th><th>Status</th><th>Stored at</th><th>Stored by</th></tr></thead><tbody id="records"></tbody></table></div>
 <div class="records move-history"><table><caption>Move history</caption><thead><tr><th>Pallet</th><th>From</th><th>To</th><th>Requested by</th><th>Last event</th></tr></thead><tbody id="history"></tbody></table></div></div></section>
 </div>
-</main></body></html>
+</main><article id="storage-report" class="print-report" hidden></article></body></html>

@@ -14,6 +14,7 @@ const pending=new Map(database.queue);
 const history=database.history;
 const targets={db:['.backend .interface:first-child','.inventory'],conveyor:['.backend .interface:nth-child(2)','.conveyor'],carriage:['.backend .interface:nth-child(3)','.carriage']};
 const steps=systemSteps();
+const freeload=()=>$('freeload-mode').checked;
 let controller,working=false,loadClear=true,staged,clearRejected,orderValidation;
 markInterrupted(history);
 function store(){writeDatabase(state.inventory,history,[...pending]);}
@@ -38,13 +39,14 @@ function records(){
     working&&state.job?.id===id?state.job.entry.event:staged?.id===id?'Loaded at infeed':'Pending · waiting for pallet',
   ]);
   recordRows('queue',queue,'No queued storage orders.',4);
-  const completed=new Map();
+  const operatorRows=new Map(queue.map(([id,destination,,status])=>[id,[id,destination,status]]));
+  if(staged?.automatic)operatorRows.set(staged.id,[staged.id,address(staged.target),'Freeload · Loaded at infeed']);
   for(const entry of history){
-    if(entry.from==='Infeed'&&entry.event==='Completed'&&!pending.has(entry.id)&&!completed.has(entry.id)){
-      completed.set(entry.id,[entry.id,entry.to,'Order completed']);
-    }
+    if(entry.from!=='Infeed'||operatorRows.has(entry.id))continue;
+    if(entry.event==='Completed')operatorRows.set(entry.id,[entry.id,entry.to,'Order completed']);
+    else if(entry.freeload)operatorRows.set(entry.id,[entry.id,entry.to,'Freeload · '+entry.event]);
   }
-  recordRows('operator-queue',[...queue.map(([id,destination,,status])=>[id,destination,status]),...completed.values()],'No storage orders.',3);
+  recordRows('operator-queue',[...operatorRows.values()],'No storage orders.',3);
   recordRows('records',state.inventory.map(item=>[item.id,address(item.slot),state.offRack.has(item.id)?'Unloaded · write pending':'Stored',...storedDetails(item)]),'No stored pallets.',5);
   recordRows('history',history.map(item=>[item.id,item.from,item.to,item.requestedBy||'—',item.event+' · '+new Date(item.at).toLocaleTimeString()]),'No moves recorded.',5);
 }
@@ -55,19 +57,22 @@ function log(entry,label,finished=false){
 function occupied(slot){return state.inventory.some(item=>sameSlot(item.slot,slot));}
 function refresh(){
   const control=$('storage-destination'), mode=$('storage-mode').value;
+  for(const id of ['pallet-id','storage-mode'])$(id).disabled=freeload();
+  $('queue-order').disabled=freeload()||!!orderValidation;
+  $('freeload-mode').disabled=!!orderValidation;
   const before=control.dataset.selected??control.value;
   control.replaceChildren(...slots.map(slot=>new Option(address(slot)+(occupied(slot)?' — occupied':''),address(slot))));
   [...control.options].forEach((option,index)=>{option.disabled=occupied(slots[index]);});
   control.value=[...control.options].find(o=>o.value===before&&!o.disabled)?.value??[...control.options].find(o=>!o.disabled)?.value??'';
-  if(mode!=='specified'){
+  if(freeload()||mode!=='specified'){
     control.prepend(new Option('Assigned by Ignition',''));
     control.value='';
   }else control.dataset.selected=control.value;
-  control.disabled=mode!=='specified';
+  control.disabled=freeload()||mode!=='specified';
   for(const id of ['load-pallet','scan-id','load-profile'])$(id).disabled=!loadClear||!!staged;
   const guided=$('step-demo').checked||$('trace-demo').checked;
-  $('queue-order').classList.toggle('next-highlight',guided&&!pending.size);
-  $('load-pallet').classList.toggle('next-highlight',guided&&loadClear&&!staged&&[...pending.keys()].some(id=>!working||id!==state.job?.id));
+  $('queue-order').classList.toggle('next-highlight',guided&&!freeload()&&!pending.size);
+  $('load-pallet').classList.toggle('next-highlight',guided&&loadClear&&!staged&&(freeload()||[...pending.keys()].some(id=>!working||id!==state.job?.id)));
 }
 function palletId(id){
   if(!id)throw new Error('Enter the pallet ID shown on the barcode.');
@@ -98,13 +103,25 @@ function clearAlarm(){
   $('belt-pallet').classList.remove('rejected');
   const release=clearRejected;clearRejected=null;release?.();
 }
+function scanPrompt(){
+  return freeload()?'Scan a pallet. Ignition will honor an existing order or choose a rack location.':'Scan a pallet with a queued storage order.';
+}
+function storageReport(entry){
+  const heading=document.createElement('h1');
+  heading.textContent='AS/RS storage report';
+  const summary=document.createElement('p');
+  const mode=entry.freeload?'Freeload Mode':'Queued storage order';
+  summary.textContent='Pallet '+entry.id+' stored at '+entry.to+' on Line 2. Mode: '+mode+'. Requested by '+entry.requestedBy+'. '+new Date(entry.at).toLocaleString();
+  $('storage-report').replaceChildren(heading,summary);
+  $('print-storage').hidden=false;
+}
 async function runConveyor(signal,entry,profile){
   conveyorFeedback('Indexing to check station');
   $('belt-pallet').dataset.position='scale';
   await conveyorReport('Indexing to weight and dimension check',signal);
   await wait(900,signal);
   loadClear=true;refresh();
-  text('scan-message','Loading area clear. You can scan another queued pallet.');
+  text('scan-message','Loading area clear. '+scanPrompt());
   conveyorFeedback('Weighing and sizing');
   log(entry,'Weighing and sizing');
   await conveyorReport('Pallet at weight and dimension check',signal);
@@ -132,8 +149,8 @@ async function runConveyor(signal,entry,profile){
     conveyorFeedback('Rejected pallet removed');
     flash('conveyor','Rejection cleared',true);
     await conveyorReport('Rejected pallet removed',signal);
-    text('operator-status','Pending');
-    text('scan-message','Storage order stays queued. Scan the corrected load to retry.');
+    text('operator-status',entry.freeload?'Ready':'Pending');
+    text('scan-message',entry.freeload?'Scan the corrected load with Freeload Mode on to retry.':'Storage order stays queued. Scan the corrected load to retry.');
     event('Check station cleared after rejected pallet removal.');
     return false;
   }
@@ -155,14 +172,16 @@ async function runConveyor(signal,entry,profile){
 }
 $('storage-request').addEventListener('submit',async e=>{
   e.preventDefault();
-  if(orderValidation)return;
+  if(orderValidation||freeload())return;
   const local=new AbortController(),signal=local.signal;
-  orderValidation=local;$('queue-order').disabled=true;
+  orderValidation=local;refresh();
   const entered=$('pallet-id').value.trim().toUpperCase(),request=order();
   try{
     await steps.lookup(signal);signal.throwIfAborted();
     flash('db','Check pallet and rack');
-    const id=palletId(entered);allocate(request);
+    const id=palletId(entered);
+    if((working&&state.job?.id===id)||staged?.id===id)throw new Error('Pallet '+id+' is already in process.');
+    allocate(request);
     if(pending.has(id))throw new Error('A storage order for '+id+' is already queued.');
     text('db-exchange',id+' is eligible for storage.');
     await steps.observe('Database → Ignition · '+id+' eligible for storage',signal);
@@ -178,18 +197,20 @@ $('storage-request').addEventListener('submit',async e=>{
       await steps.observe('Inventory validation rejected · '+error.message);
     }
   }finally{
-    if(orderValidation===local){orderValidation=null;$('queue-order').disabled=false;}
+    if(orderValidation===local){orderValidation=null;refresh();}
   }
 });
 function load(e){
   e.preventDefault();
   if(!loadClear||staged)return;
-  let id,target,request;
+  let id,target,request,automatic;
   const scanned=$('scan-id').value.trim().toUpperCase();
   try{
     id=palletId(scanned);
     if(working&&state.job?.id===id)throw new Error('Pallet '+id+' is already in process.');
     request=pending.get(id);
+    automatic=!request&&freeload();
+    if(automatic)request={mode:'auto',requestedBy:requester()};
     if(!request)throw new Error('No pending storage order matches '+id+'.');
     target=allocate(request);
   }catch(error){
@@ -205,7 +226,7 @@ function load(e){
     return;
   }
   $('scan-message').classList.remove('error');
-  const next={id,request,target,storedBy:requester(),profile:$('load-profile').value};
+  const next={id,request,target,automatic,storedBy:requester(),profile:$('load-profile').value};
   if(working){
     staged=next;
     text('staged-pallet',id);$('staged-pallet').dataset.position='load';
@@ -215,12 +236,12 @@ function load(e){
   }
   void runStorage(next);
 }
-async function runStorage({id,request,target,storedBy,profile}){
+async function runStorage({id,request,target,automatic,storedBy,profile}){
   working=true;loadClear=false;
-  text('scan-message','Barcode '+id+' matched a queued order.');
+  text('scan-message','Barcode '+id+(automatic?' accepted in Freeload Mode.':' matched a queued order.'));
   refresh();
   const local=new AbortController();controller=local;const signal=local.signal;
-  const entry={id,from:'Infeed',to:address(target),requestedBy:request.requestedBy};
+  const entry={id,from:'Infeed',to:address(target),requestedBy:request.requestedBy,freeload:automatic};
   history.unshift(entry);
   state.job={id,from:null,to:target,motion:null,entry};
   text('belt-pallet',id);
@@ -228,15 +249,23 @@ async function runStorage({id,request,target,storedBy,profile}){
   text('plc-command','—');
   text('plc-feedback','Parked');
   text('conveyor-command','—');
-  text('form-message',id+' · Infeed to '+entry.to);
-  text('db-exchange','Destination reserved: '+entry.to);
+  text('form-message',automatic?'Freeload · '+id+' scanned at infeed':id+' · Infeed to '+entry.to);
+  text('db-exchange',automatic?'Waiting to check rack availability.':'Destination reserved: '+entry.to);
   text('operator-status','Loaded');
   conveyorFeedback('Barcode read: '+id);
-  event('Ignition matched the infeed scan and reserved '+entry.to+'.');
+  event(automatic?'Ignition received a Freeload scan.':'Ignition matched the infeed scan and reserved '+entry.to+'.');
   flash('conveyor','Barcode '+id,true);
   log(entry,'Pallet scanned');
   try{
     await conveyorReport('Barcode read: '+id,signal);
+    if(automatic){
+      await steps.lookup(signal);signal.throwIfAborted();
+      flash('db','Check pallet and rack availability');
+      text('form-message','Freeload · '+id+' · Infeed to '+entry.to);
+      text('db-exchange','Freeload destination reserved: '+entry.to);
+      event('Ignition selected '+entry.to+' for Freeload pallet '+id+'.');
+      await steps.observe('Database → Ignition · Pallet eligible; rack '+entry.to+' available',signal);
+    }
     await steps.pause('step-conveyor');signal.throwIfAborted();
     text('conveyor-command','Release '+id+' to pickup stand');
     event('Conveyor release sent.');
@@ -279,12 +308,13 @@ async function runStorage({id,request,target,storedBy,profile}){
     if(!$('step-demo').checked)await wait(720,signal);
     await steps.pause('step-inventory');signal.throwIfAborted();
     state.inventory.push({id,slot:placement,storedAt:new Date().toISOString(),storedBy});state.job.motion=null;
-    pending.delete(id);
+    if(!automatic)pending.delete(id);
     flash('db','Store rack location');
     text('db-exchange','Write committed: '+id+' at '+entry.to+'.');
     event('Inventory updated. Storage recorded in move history.');
     text('operator-status','Order completed');
     log(entry,'Completed',true);
+    storageReport(entry);
     await steps.observe('Database → Ignition · Inventory write committed for '+id,signal);
   }catch(error){
     if(!signal.aborted){log(entry,'Interrupted',true);event('Storage interrupted. Reset the demo before retrying.');}
@@ -298,6 +328,12 @@ async function runStorage({id,request,target,storedBy,profile}){
   }
 }
 $('scan-form').addEventListener('submit',load);
+$('freeload-mode').addEventListener('change',()=>{
+  if(!working)text('form-message',freeload()?'Freeload Mode is on. Load and scan at the conveyor.':'Enter a storage order here. Scan the pallet at the conveyor.');
+  if(loadClear&&!staged&&!clearRejected)text('scan-message',scanPrompt());
+  refresh();
+});
+$('print-storage').addEventListener('click',()=>window.print());
 $('step-demo').addEventListener('change',refresh);
 $('trace-demo').addEventListener('change',refresh);
 $('remove-rejected').addEventListener('click',clearAlarm);
@@ -310,8 +346,11 @@ $('reset-storage').addEventListener('click',()=>{
   $('belt-pallet').dataset.position='empty';cylinder(false);
   conveyorFeedback('Ready');text('conveyor-command','—');text('plc-command','—');text('plc-feedback','Parked');text('carriage-state','Parked');text('db-exchange','Ready to read rack inventory.');
   text('operator-status','Ready');text('form-message','Enter a storage order here. Scan the pallet at the conveyor.');
+  $('freeload-mode').checked=false;$('print-storage').hidden=true;$('storage-report').replaceChildren();
   $('storage-request').reset();delete $('storage-destination').dataset.selected;
   $('scan-form').reset();$('scan-message').classList.remove('error');text('scan-message','Scan a pallet with a queued storage order.');event('Awaiting operator request.');
   refresh();records();store();
 });
+const lastStorage=history.find(entry=>entry.from==='Infeed'&&entry.event==='Completed');
+if(lastStorage)storageReport(lastStorage);
 store();records();refresh();warehouse($('rack'),state);
