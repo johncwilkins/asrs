@@ -1,3 +1,5 @@
+import {mountConveyor} from './scene.js';
+import {setupMoveReport,resetMoveReport} from './move-report.js';
 import {warehouse,address,sameSlot} from './scene.js';
 import {runTransfer} from './carriage.js';
 import {arrow,clearArrow,wait} from './links.js';
@@ -106,15 +108,7 @@ function clearAlarm(){
 function scanPrompt(){
   return freeload()?'Scan a pallet. Ignition will honor an existing order or choose a rack location.':'Scan a pallet with a queued storage order.';
 }
-function storageReport(entry){
-  const heading=document.createElement('h1');
-  heading.textContent='AS/RS storage report';
-  const summary=document.createElement('p');
-  const mode=entry.freeload?'Freeload Mode':'Queued storage order';
-  summary.textContent='Pallet '+entry.id+' stored at '+entry.to+' on Line 2. Mode: '+mode+'. Requested by '+entry.requestedBy+'. '+new Date(entry.at).toLocaleString();
-  $('storage-report').replaceChildren(heading,summary);
-  $('print-storage').hidden=false;
-}
+
 async function runConveyor(signal,entry,profile){
   conveyorFeedback('Indexing to check station');
   $('belt-pallet').dataset.position='scale';
@@ -310,7 +304,6 @@ async function runStorage({id,request,target,automatic,storedBy,profile}){
     event('Inventory updated. Storage recorded in move history.');
     text('operator-status','Order completed');
     log(entry,'Completed',true);
-    storageReport(entry);
     await steps.observe('database','Inventory write committed for '+id,signal);
   }catch(error){
     if(!signal.aborted){log(entry,'Interrupted',true);event('Storage interrupted. Reset the demo before retrying.');}
@@ -329,24 +322,26 @@ $('freeload-mode').addEventListener('change',()=>{
   if(loadClear&&!staged&&!clearRejected)text('scan-message',scanPrompt());
   refresh();
 });
-$('print-storage').addEventListener('click',()=>window.print());
 $('step-demo').addEventListener('change',refresh);
 $('trace-demo').addEventListener('change',refresh);
 $('remove-rejected').addEventListener('click',clearAlarm);
 $('storage-mode').addEventListener('change',refresh);
 $('storage-destination').addEventListener('change',e=>{e.target.dataset.selected=e.target.value;});
 $('reset-storage').addEventListener('click',()=>{
+  resetMoveReport();
   controller?.abort();controller=null;orderValidation?.abort();orderValidation=null;$('queue-order').disabled=false;steps.resume();clearAlarm();clearArrow();
   state.inventory=seedInventory();history.length=0;
   working=false;loadClear=true;staged=null;$('staged-pallet').dataset.position='empty';pending.clear();state.job=null;state.infeed=false;state.carriage=parked();
   $('belt-pallet').dataset.position='empty';cylinder(false);
   conveyorFeedback('Ready');text('conveyor-command','—');text('plc-command','—');text('plc-feedback','Parked');text('carriage-state','Parked');text('db-exchange','Ready to read rack inventory.');
   text('operator-status','Ready');text('form-message','Enter a storage order here. Scan the pallet at the conveyor.');
-  $('freeload-mode').checked=false;$('print-storage').hidden=true;$('storage-report').replaceChildren();
+  $('freeload-mode').checked=false;
   $('storage-request').reset();delete $('storage-destination').dataset.selected;
   $('scan-form').reset();$('scan-message').classList.remove('error');text('scan-message','Scan a pallet with a queued storage order.');event('Awaiting operator request.');
   refresh();records();store();
 });
-const lastStorage=history.find(entry=>entry.from==='Infeed'&&entry.event==='Completed');
-if(lastStorage)storageReport(lastStorage);
 store();records();refresh();warehouse($('rack'),state);
+
+mountConveyor($('conveyor-stage'));
+
+setupMoveReport();

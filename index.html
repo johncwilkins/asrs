@@ -24,11 +24,11 @@
 </div><div id="event" class="event" aria-live="polite"><span>IGNITION EVENT</span> Awaiting operator request.</div><div class="trace-controls"><p id="trace-message" aria-live="polite" hidden></p><button id="step-feedback" class="next-action" type="button" data-system-step hidden>Continue after feedback</button></div></section>
 </div><div class="system-steps"><label><input id="step-demo" type="checkbox" checked> System step-through</label><label><input id="trace-demo" type="checkbox"> Pause on every command and feedback</label></div></section>
 <div class="dashboard equipment">
-<section class="panel inventory"><header><span class="glyph">▤</span><h2>Database</h2><span class="minor">Saved in this browser</span></header>
+<section class="panel inventory"><header><span class="glyph">▤</span><h2>Database</h2><span class="minor">Saved in this browser</span><button type="button" class="subtle" id="move-report-open">Move report</button></header>
 <div class="inventory-inner"><div class="records"><table><caption>Current inventory</caption><thead><tr><th>Pallet</th><th>Rack address</th><th>Status</th><th>Stored at</th><th>Stored by</th></tr></thead><tbody id="records"></tbody></table></div>
 <div class="records move-history"><table><caption>Move history</caption><thead><tr><th>Pallet</th><th>From</th><th>To</th><th>Requested by</th><th>Last event</th></tr></thead><tbody id="history"></tbody></table></div></div></section>
 <section class="panel carriage"><header><span class="glyph">▦</span><h2>Carriage PLC</h2><span id="carriage-state" class="badge">Parked</span></header>
 <div id="scene"><canvas id="rack" tabindex="0" aria-label="Interactive 3D rack aisle. Drag or use the arrow keys to orbit the carriage."></canvas><div class="viewport-label"><i></i> RACK AISLE <span>LINE 2</span></div><div class="view-controls"><button id="view" type="button">Aisle view</button></div></div>
-<div class="scene-foot"><span><i class="legend source"></i> Source</span><span><i class="legend destination"></i> Destination</span><span><i class="legend load"></i> Transfer pallet</span><span class="orbit-tip">Drag to orbit · B = bin · L = level</span></div></section>
+<div class="scene-foot"><span><i class="legend source"></i> Source</span><span><i class="legend destination"></i> Destination</span><span><i class="legend load"></i> Transfer pallet</span><span class="orbit-tip">Drag to orbit · +/− to zoom · B = bin · L = level</span></div></section>
 </div>
 </main></body></html>

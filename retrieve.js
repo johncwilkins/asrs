@@ -1,3 +1,5 @@
+import {mountConveyor} from './scene.js';
+import {setupMoveReport,resetMoveReport} from './move-report.js';
 import {warehouse,address} from './scene.js';
 import {runTransfer} from './carriage.js';
 import {arrow,clearArrow,wait} from './links.js';
@@ -85,13 +87,7 @@ function releaseUnload(){
   $('unload-pallet').disabled=true;$('unload-pallet').classList.remove('next-highlight');
   const callback=unload;unload=null;callback?.();
 }
-function receipt(entry){
-  const heading=document.createElement('h1');
-  heading.textContent='AS/RS retrieval report';
-  const summary=document.createElement('p');
-  summary.textContent='Pallet '+entry.id+' retrieved from '+entry.from+' and removed at the Line 2 unload point. Requested by '+entry.requestedBy+'. '+new Date(entry.at).toLocaleString();
-  $('retrieval-report').replaceChildren(heading,summary);$('print-receipt').hidden=false;
-}
+
 function queueRetrieval(e){
   e.preventDefault();
   const entered=$(byId()?'retrieve-pallet':'retrieve-source').value;
@@ -215,7 +211,7 @@ async function finishDeparture(entry,signal){
   if(!jobs.size)text('operator-status','Order completed');
   text('db-exchange','Write committed: '+entry.from+' is free.');
   event('Pallet removed from active inventory and retrieval recorded.');
-  flash('db','Save confirmed departure');log(entry,'Completed',true);receipt(entry);
+  flash('db','Save confirmed departure');log(entry,'Completed',true);
   await steps.observe('database','Departure write committed for '+id,signal);
 }
 $('retrieve-request').addEventListener('submit',queueRetrieval);
@@ -225,12 +221,12 @@ $('step-demo').addEventListener('change',()=>{
   refreshControls();
   $('unload-pallet').classList.toggle('next-highlight',!!unload&&$('step-demo').checked);
 });
-$('print-receipt').addEventListener('click',()=>window.print());
 $('reset-retrieve').addEventListener('click',()=>{
+  resetMoveReport();
   controller.abort();controller=new AbortController();steps.resume();releaseUnload();clearArrow();
   exitClear?.();exitClear=null;
   state.inventory=seedInventory();database.history.length=0;writeDatabase(state.inventory,database.history,[]);
-  $('print-receipt').hidden=true;$('retrieval-report').replaceChildren();
+
   queued.length=0;jobs.clear();state.offRack.clear();requestBusy=false;
   state.job=null;state.carriage=parked();
   document.querySelectorAll('.retrieval-load').forEach(pallet=>pallet.remove());
@@ -251,3 +247,7 @@ for(const entry of pendingOnLoad)finishDeparture(entry,controller.signal).catch(
 });
 
 pump();
+
+mountConveyor($('conveyor-stage'));
+
+setupMoveReport();

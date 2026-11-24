@@ -1,3 +1,4 @@
+import {setupMoveReport,resetMoveReport} from './move-report.js';
 import {warehouse, sameSlot, address} from './scene.js';
 import {runTransfer} from './carriage.js';
 import {arrow,clearArrow,wait} from './links.js';
@@ -141,6 +142,7 @@ function message(value,error=false){
   $('form-message').textContent=value;$('form-message').classList.toggle('error',error);
 }
 function reset(){
+  resetMoveReport();
   controller?.abort();
   clearArrow();
   steps.resume();
@@ -288,3 +290,5 @@ restore();
 destinationOptions({bay:6,level:2,side:'R'});
 records();configure();
 warehouse($('rack'),state);
+
+setupMoveReport();

@@ -18,29 +18,56 @@ export function slotPosition(slot){
   return [slot.bay*2-8, .43 + (slot.level-1)*1.75, slot.side==='L'?-2.03:2.03];
 }
 
-export function warehouse(canvas, state){
+export function warehouse(canvas,state,options={}){
   const ctx=canvas.getContext('2d');
-  let yaw=-.55, pitch=.48, overhead=false, drag;
-  const control=document.querySelector('#view');
+  const conveyor=options.conveyor;
+  let yaw=-.55,pitch=.48,overhead=false,drag,magnification=1;
+  const controls=options.controls??document.querySelector('#view').parentElement;
+  const control=controls.querySelector('button');
+  const zoomButtons=[-1,1].map(direction=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='zoom-button';
+    button.textContent=direction<0?'−':'+';
+    button.setAttribute('aria-label',direction<0?'Zoom out':'Zoom in');
+    button.addEventListener('click',()=>adjustZoom(direction));
+    controls.append(button);
+    return button;
+  });
+  function adjustZoom(direction){
+    magnification=Math.min(2.25,Math.max(.55,magnification*1.16**direction));
+    zoomButtons[0].disabled=magnification<=.55;
+    zoomButtons[1].disabled=magnification>=2.25;
+  }
+  canvas.addEventListener('wheel',e=>{
+    if(document.activeElement!==canvas||!e.deltaY)return;
+    e.preventDefault();
+    adjustZoom(e.deltaY<0?1:-1);
+  },{passive:false});
   function preset(){
-    yaw=overhead?-.15:-.55;
+    yaw=overhead?-.15:conveyor?-.32:-.55;
     pitch=overhead?1.25:.48;
-    control.textContent=overhead?'Top view':'Aisle view';
-    control.setAttribute('aria-label',overhead?'Switch to aisle view':'Switch to top view');
+    control.textContent=overhead?'Top view':conveyor?'Conveyor view':'Aisle view';
+    control.setAttribute('aria-label',overhead?(conveyor?'Switch to conveyor view':'Switch to aisle view'):'Switch to top view');
   }
   control.addEventListener('click',()=>{overhead=!overhead;preset()});
   canvas.addEventListener('pointerdown', e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId)});
   canvas.addEventListener('pointermove',e=>{
     if(!drag)return;
-    yaw=Math.max(-1.25,Math.min(1.25,yaw+(e.clientX-drag[0])*.009));
+    yaw=(yaw+(e.clientX-drag[0])*.011)%(2*Math.PI);
     pitch=Math.max(.29,Math.min(1.4,pitch+(e.clientY-drag[1])*.007));
     drag=[e.clientX,e.clientY];
   });
   for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,()=>{drag=null});
   canvas.addEventListener('keydown',e=>{
+    if(['+','=','-'].includes(e.key)){
+      e.preventDefault();
+      adjustZoom(e.key==='-'?-1:1);
+      return;
+    }
     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
     e.preventDefault();
-    yaw=Math.max(-1.25,Math.min(1.25,yaw+(e.key==='ArrowLeft'?.12:e.key==='ArrowRight'?-.12:0)));
+    yaw=(yaw+(e.key==='ArrowLeft'?.12:e.key==='ArrowRight'?-.12:0))%(2*Math.PI);
     pitch=Math.max(.29,Math.min(1.4,pitch+(e.key==='ArrowUp'?.1:e.key==='ArrowDown'?-.1:0)));
   });
   preset();
@@ -56,10 +83,10 @@ export function warehouse(canvas, state){
     const bg=ctx.createLinearGradient(0,0,0,h);
     bg.addColorStop(0,'#0c1928');bg.addColorStop(1,'#294155');
     ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-    const aim=[0,1.28,0], range=22;
+    const aim=[0,conveyor?1.05:1.28,0],range=22;
     const eye=[Math.sin(yaw)*Math.cos(pitch)*range,aim[1]+Math.sin(pitch)*range,Math.cos(yaw)*Math.cos(pitch)*range];
     const forward=norm(sub(aim,eye)), right=norm(cross(forward,[0,1,0])), up=cross(right,forward);
-    const zoom=Math.min(w/17,h/7.7)*range;
+    const zoom=Math.min(w/(conveyor?15.6:17),h/(conveyor?6.2:7.7))*range*magnification;
     const polygons=[];
     function project(p){
       const v=sub(p,eye), d=dot(v,forward), scale=zoom/d;
@@ -86,10 +113,13 @@ export function warehouse(canvas, state){
     ctx.fillStyle='#263e50';ctx.beginPath();floor.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();
     for(let x=-8;x<=8;x++)floorLine([x,-.05,-3.8],[x,-.05,3.8],'#395064');
     for(let z=-3;z<=3;z++)floorLine([-8,-.05,z],[8,-.05,z],'#395064');
+    if(conveyor){
+      conveyor.build(box,pallet);
+    }else{
     for(const z of [-.38,.38])box(0,0,z,15,.09,.13,'6e8e9e');
     for(const side of ['L','R']){
       const z=side==='L'?-2.03:2.03;
-      const opacity=side==='R'&&pitch<.9?.40:1;
+      const opacity=(side==='R'?eye[2]>0:eye[2]<0)&&pitch<.9?.40:1;
       for(let bay=1;bay<=7;bay++){
         const x=bay*2-8;
         for(const zz of [z-.67,z+.67])box(x-1,0,zz,.09,3.98,.09,'7896b0',opacity);
@@ -123,6 +153,7 @@ export function warehouse(canvas, state){
       box(x+offset,y-.06,fork*.5,.12,.065,reach,'aebdca');
     }
     if(state.job?.motion)pallet(state.job.motion.x,state.job.motion.y,state.job.motion.z,true);
+    }
     polygons.sort((a,b)=>b.depth-a.depth).forEach(({p,color,opacity})=>{
       ctx.globalAlpha=opacity;ctx.fillStyle=color;ctx.beginPath();p.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();
     });
@@ -130,6 +161,7 @@ export function warehouse(canvas, state){
     const occupiedLabels=[];
     function tag(point,label,color,small=false){
       const [x,y]=project(point);
+      if(x<0||x>w||y<0||y>h)return;
       ctx.font=(small?'650 10px':'750 11px')+' system-ui';
       const width=ctx.measureText(label).width+(small?8:12);
       const height=small?14:18;
@@ -146,6 +178,11 @@ export function warehouse(canvas, state){
       ctx.fillStyle='#102333';ctx.fillRect(left,top,width,height);
       if(!small){ctx.strokeStyle=color;ctx.strokeRect(left+.5,top+.5,width-1,height-1);}
       ctx.fillStyle=color;ctx.fillText(label,left+(small?4:6),top+height-4);
+    }
+    if(conveyor){
+      conveyor.label(tag);
+      requestAnimationFrame(draw);
+      return;
     }
     if(state.job){
       const from=state.job.from, to=state.job.to;
@@ -174,3 +211,70 @@ export function warehouse(canvas, state){
   requestAnimationFrame(draw);
 }
 export const sameSlot=(a,b)=>a.bay===b.bay&&a.level===b.level&&a.side===b.side;
+
+export function mountConveyor(stage){
+  const canvas=document.createElement('canvas');
+  canvas.className='scene-conveyor-canvas';
+  canvas.tabIndex=0;
+  canvas.setAttribute('aria-label',stage.getAttribute('aria-label')+'. Drag or use arrow keys to rotate. Use plus and minus to zoom.');
+  stage.removeAttribute('role');
+  stage.removeAttribute('aria-label');
+  const controls=document.createElement('div');
+  controls.className='view-controls';
+  const view=document.createElement('button');
+  view.type='button';
+  controls.append(view);
+  stage.prepend(canvas,controls);
+
+  const zones=[...stage.querySelectorAll('.belt-zones span')].map(el=>[el.querySelector('b').textContent,el.lastChild.textContent]);
+  const positions={load:-4.5,unload:-4.5,scale:0,pickup:4.5,lifted:4.5};
+  const moving=new WeakMap();
+  let activeLoads=[];
+  warehouse(canvas,null,{controls,conveyor:{
+    build(box,pallet){
+      for(const center of [-4.5,0,4.5]){
+        for(const leg of [-1.9,1.9]){
+          for(const z of [-1.04,1.04])box(center+leg,0,z,.16,.8,.16,'647b91');
+          box(center+leg,.24,0,.11,.12,2.17,'50647a');
+        }
+        box(center,.76,0,4.36,.20,2.2,'40576a');
+        for(let offset=-1.94;offset<=2;offset+=.32){
+          box(center+offset,.945,0,.24,.09,1.95,'a4bbc7');
+          box(center+offset-.055,1.031,0,.045,.012,1.93,'c5d5df');
+        }
+        for(const z of [-1.12,1.12])box(center,.87,z,4.37,.25,.14,'5f84a1');
+      }
+      for(const side of [-1,1]){
+        const extended=stage.dataset.cylinder==='on';
+        box(4.5,.68,side*1.53,.38,.34,.61,'85a6bf');
+        const reach=extended?.70:.19;
+        box(4.5,.86,side*(1.26-reach/2),.17,.12,reach,'8cddf7');
+      }
+      activeLoads=[];
+      const now=performance.now();
+      for(const node of stage.querySelectorAll('.belt-pallet')){
+        const position=node.dataset.position;
+        if(!Object.hasOwn(positions,position)){moving.delete(node);continue;}
+        const targetX=positions[position],targetY=position==='lifted'?1.55:1.06;
+        let state=moving.get(node);
+        if(!state){
+          state={x:targetX,y:targetY,fromX:targetX,fromY:targetY,targetX,targetY,started:now};
+          moving.set(node,state);
+        }
+        if(state.targetX!==targetX||state.targetY!==targetY){
+          Object.assign(state,{fromX:state.x,fromY:state.y,targetX,targetY,started:now});
+        }
+        const time=Math.min(1,(now-state.started)/(targetX===state.fromX?430:850));
+        const progress=time*time*(3-2*time);
+        state.x=state.fromX+(targetX-state.fromX)*progress;
+        state.y=state.fromY+(targetY-state.fromY)*progress;
+        pallet(state.x,state.y,0,true);
+        activeLoads.push({x:state.x,y:state.y,id:node.textContent,rejected:node.classList.contains('rejected')});
+      }
+    },
+    label(tag){
+      for(const load of activeLoads)if(load.id)tag([load.x,load.y+.9,0],load.id,load.rejected?'#ff928d':'#ffca79');
+      zones.forEach(([number,name],i)=>tag([(i-1)*4.5,.25,1.48],number+' · '+name,'#caddf1',true));
+    }
+  }});
+}
